@@ -28,7 +28,7 @@ for (const key of ['senacRoomsV4','senacMaintenance','senacPeople']) {
 </head>
 <body>
 <header><div><h1>Administração das Salas</h1><p>Senac Três Corações</p></div><div class="clock"><strong id="clock"></strong><span id="date"></span></div></header>
-<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button type="button" class="btn light" id="recoveryCheckBtn" style="background:#e8f2ff;border:1px solid #9dbfe8">🔎 Verificar agendamentos antigos</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
+<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button type="button" class="btn light" id="recoveryCheckBtn" style="background:#e8f2ff;border:1px solid #9dbfe8">🔎 Verificar agendamentos antigos</button><button type="button" class="btn light" id="clearAllBookings" style="background:#fff0f0;color:#9c1b1b;border:1px solid #e9b6b6">Excluir todos os agendamentos</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
 <div class="workspace">
 <aside class="people"><h3>Colaboradores</h3><p>Pesquise pelo primeiro nome e arraste para a sala.</p><input class="search" id="search" placeholder="Buscar colaborador..." autocomplete="off"><div class="person-list" id="people"></div><div class="hint">Segure pelo nome e arraste até a sala desejada. Você também pode clicar no nome e depois clicar na sala.</div></aside>
 <main class="agenda-wrap"><div class="agenda-head"><div><h3>Salas de aula — Hoje</h3><p id="today"></p></div><div class="legend">🔴 Em uso &nbsp; 🟡 Próxima &nbsp; 🟢 Livre</div></div><div class="agenda" id="agenda"></div></main>
@@ -292,6 +292,39 @@ async function runRecoveryCheck(){
  finally{btn.disabled=false;btn.textContent='🔎 Verificar agendamentos antigos'}
 }
 document.getElementById('recoveryCheckBtn').addEventListener('click',runRecoveryCheck);
+
+
+async function clearAllBookingsSafely(){
+ const button=document.getElementById('clearAllBookings');
+ if(button.disabled)return;
+ button.disabled=true;
+ try{
+  const response=await fetch('/api/state',{cache:'no-store'});
+  if(!response.ok)throw new Error('Não foi possível consultar os dados atuais.');
+  const current=await response.json();
+  const count=Object.values(current.data||{}).reduce((n,arr)=>n+(Array.isArray(arr)?arr.length:0),0);
+  if(!count){alert('Não existem agendamentos para excluir.');return}
+  const backup={exportedAt:new Date().toISOString(),reason:'Backup anterior à limpeza manual de todos os agendamentos',...current};
+  const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='backup-salas-antes-de-excluir-'+new Date().toISOString().replace(/[:.]/g,'-')+'.json';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+  if(!confirm('Backup solicitado para download. Confirma excluir TODOS os '+count+' agendamentos de TODAS as datas? A lista de colaboradores e os bloqueios de manutenção serão preservados.'))return;
+  const typed=prompt('Para confirmar, digite EXCLUIR TODOS:');
+  if(typed!=='EXCLUIR TODOS'){alert('Operação cancelada.');return}
+  const check=await fetch('/api/state',{cache:'no-store'});
+  if(!check.ok)throw new Error('Não foi possível confirmar o estado atual.');
+  const latest=await check.json();
+  if(latest.version!==current.version)throw new Error('Os dados foram alterados por outro usuário. Nenhuma exclusão realizada. Atualize a página e tente novamente.');
+  const result=await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:{},maintenance:latest.maintenance||{},people:latest.people||[],version:latest.version})});
+  if(!result.ok)throw new Error('Falha ao gravar a limpeza no Firebase.');
+  data={};maintenance=latest.maintenance||{};people=latest.people||[];stateVersion=(await result.json()).version||latest.version+1;
+  saveLocal();renderPeople();renderAgenda();
+  alert('Todos os '+count+' agendamentos foram excluídos. Colaboradores e manutenções preservados.');
+ }catch(e){alert('A limpeza não foi concluída: '+String(e.message||e))}
+ finally{button.disabled=false}
+}
+document.getElementById('clearAllBookings').addEventListener('click',clearAllBookingsSafely);
 
 initSharedState();
 </script></body></html>
