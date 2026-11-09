@@ -59,7 +59,7 @@ async function submitTeacherBooking(room,form){
  const teacher=form.elements.teacher.value.trim(),course=form.elements.course.value.trim(),turmaCode=formatTurmaCode(form.elements.turmaCode.value.trim()),first=form.elements.first.value,last=form.elements.last.value||first,start=form.elements.start.value,end=form.elements.end.value;
  const fail=t=>{feedback.textContent=t;feedback.style.color='#b42318'};
  if(!teacher||!course||!first)return fail('Preencha todos os campos obrigatórios.');
- if(!/^039\\.\\d{4}\\.\\d{4}$/.test(turmaCode))return fail('Código inválido: informe 039.AAAA.0000.');
+ if(!/^039\.\d{4}\.\d{4}$/.test(turmaCode))return fail('Código inválido: informe 039.AAAA.0000.');
  if(first<isoToday()||first===isoToday()&&start<=brParts().time)return fail('Escolha um horário futuro, considerando o horário de Brasília.');
  if(last<first)return fail('A data final não pode ser anterior à inicial.');
  if(start<'08:00'||end>'22:00'||start>=end)return fail('Selecione um período válido entre 08:00 e 22:00.');
