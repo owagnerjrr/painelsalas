@@ -56,8 +56,8 @@ async function submitTeacherBooking(room,form){
  if(last<first)return fail('A data final não pode ser anterior à inicial.');
  if(start<'08:00'||end>'22:00'||start>=end)return fail('Selecione um período válido entre 08:00 e 22:00.');
  const days=[],cursor=new Date(first+'T12:00:00'),finish=new Date(last+'T12:00:00');
- for(;cursor<=finish&&days.length<=366;cursor.setDate(cursor.getDate()+1))days.push(cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0'));
- if(!days.length||days.length>366)return fail('Escolha um período de até 366 dias.');
+ for(;cursor<=finish;cursor.setDate(cursor.getDate()+1))days.push(cursor.getFullYear()+'-'+String(cursor.getMonth()+1).padStart(2,'0')+'-'+String(cursor.getDate()).padStart(2,'0'));
+ if(!days.length)return fail('Selecione um período válido.');
  button.disabled=true;button.textContent='Salvando...';
  try{
   const res=await fetch('/api/state',{cache:'no-store'});if(!res.ok)throw Error('Não foi possível consultar a agenda.');
