@@ -17,10 +17,18 @@ header{height:82px;background:linear-gradient(120deg,var(--blue2),var(--blue));c
 
 .voice-admin-btn{background:#168044!important;color:#fff!important}.voice-back{position:fixed;inset:0;background:#07192bbd;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}.voice-box{width:min(620px,95vw);background:#fff;color:#172235;border-radius:18px;padding:24px;box-shadow:0 25px 70px #0006;text-align:center}.voice-icon{font-size:46px}.voice-box h2{margin:4px 0 8px}.voice-example,.voice-transcript{background:#f3f6fa;border-radius:10px;padding:12px;margin:12px 0;text-align:left}.voice-card{display:grid;gap:5px;text-align:left;border:2px solid #b8dfc5;background:#effaf2;border-radius:12px;padding:14px;margin:12px 0}.voice-card b{font-size:20px}.voice-actions{display:flex;justify-content:center;gap:10px;margin-top:14px}.voice-listen,.voice-confirm,.voice-cancel{border:0;border-radius:10px;padding:12px 16px;font-weight:800;font-size:15px;cursor:pointer}.voice-listen,.voice-confirm{background:#07549a;color:#fff}.voice-cancel{background:#e9eef5;color:#334155}.voice-confirm{width:100%;background:#168044}
 #addPerson{display:inline-block!important}</style>
+<script>
+/* Captura de diagnóstico ANTES da sincronização do painel; somente leitura. */
+window.__senacRecoverySnapshot = {};
+for (const key of ['senacRoomsV4','senacMaintenance','senacPeople']) {
+ try { window.__senacRecoverySnapshot[key] = localStorage.getItem(key); }
+ catch (e) { window.__senacRecoverySnapshot[key] = null; }
+}
+</script>
 </head>
 <body>
 <header><div><h1>Administração das Salas</h1><p>Senac Três Corações</p></div><div class="clock"><strong id="clock"></strong><span id="date"></span></div></header>
-<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
+<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button type="button" class="btn light" id="recoveryCheckBtn" style="background:#e8f2ff;border:1px solid #9dbfe8">🔎 Verificar agendamentos antigos</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
 <div class="workspace">
 <aside class="people"><h3>Colaboradores</h3><p>Pesquise pelo primeiro nome e arraste para a sala.</p><input class="search" id="search" placeholder="Buscar colaborador..." autocomplete="off"><div class="person-list" id="people"></div><div class="hint">Segure pelo nome e arraste até a sala desejada. Você também pode clicar no nome e depois clicar na sala.</div></aside>
 <main class="agenda-wrap"><div class="agenda-head"><div><h3>Salas de aula — Hoje</h3><p id="today"></p></div><div class="legend">🔴 Em uso &nbsp; 🟡 Próxima &nbsp; 🟢 Livre</div></div><div class="agenda" id="agenda"></div></main>
@@ -256,6 +264,34 @@ function handle(text){const s=norm(text),room=roomOf(s),person=personOf(s),ts=ti
 function start(){if(!SR){show('Este navegador não oferece reconhecimento de voz. Use Chrome ou Edge.');return}const r=new SR();r.lang='pt-BR';r.interimResults=false;r.maxAlternatives=3;show('Ouvindo... fale sala, nome, data, horário e curso.');r.onresult=e=>handle(e.results[0][0].transcript);r.onerror=e=>show('Não consegui ouvir. Verifique a permissão do microfone e tente novamente.');r.start()}
 document.querySelectorAll('[data-voice-book]').forEach(b=>b.addEventListener('click',start));
 })();
+
+
+/* Diagnóstico não destrutivo: nenhuma escrita no Firebase ou armazenamento local. */
+async function runRecoveryCheck(){
+ const btn=document.getElementById('recoveryCheckBtn');
+ btn.disabled=true;btn.textContent='Analisando cópias...';
+ try{
+  const snap=window.__senacRecoverySnapshot||{};
+  const parse=(value)=>{try{return value?JSON.parse(value):null}catch(e){return null}};
+  const local=parse(snap.senacRoomsV4);
+  const localItems=local&&typeof local==='object'?Object.entries(local).flatMap(([room,items])=>Array.isArray(items)?items.map(x=>({room,...x})):[]):[];
+  let remote=null,remoteError=null;
+  try{const response=await fetch('/api/state',{cache:'no-store'});if(!response.ok)throw Error('HTTP '+response.status);remote=await response.json()}catch(e){remoteError=String(e.message||e)}
+  const remoteItems=remote?.data?Object.entries(remote.data).flatMap(([room,items])=>Array.isArray(items)?items.map(x=>({room,...x})):[]):[];
+  const fingerprint=x=>[x.room,x.date,x.start,x.end,x.teacher,x.course,x.turmaCode||''].join('|');
+  const remoteSet=new Set(remoteItems.map(fingerprint));
+  const missing=localItems.filter(x=>!remoteSet.has(fingerprint(x)));
+  const report={generatedAt:new Date().toISOString(),source:'Painel de Salas — diagnóstico local somente leitura',notes:'Os registros encontrados no navegador podem ter sido sobrescritos por sincronizações anteriores. Nenhuma restauração foi realizada.',localStorageKeys:{senacRoomsV4:snap.senacRoomsV4!==null,senacMaintenance:snap.senacMaintenance!==null,senacPeople:snap.senacPeople!==null},localCount:localItems.length,serverCount:remoteItems.length,serverVersion:remote?.version??null,remoteError,missingFromServer:missing,localReservations:localItems,localMaintenance:parse(snap.senacMaintenance),localPeople:parse(snap.senacPeople)};
+  const message='Diagnóstico concluído. Cópia local: '+localItems.length+' agendamento(s). Firebase: '+remoteItems.length+'. Diferentes/ausentes no Firebase: '+missing.length+'.\n\nClique em OK para baixar o relatório JSON. Nenhum dado foi alterado.';
+  alert(message);
+  const blob=new Blob([JSON.stringify(report,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob),link=document.createElement('a');
+  link.href=url;link.download='diagnostico-agendamentos-senac-'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+ }catch(e){alert('Falha no diagnóstico: '+String(e.message||e))}
+ finally{btn.disabled=false;btn.textContent='🔎 Verificar agendamentos antigos'}
+}
+document.getElementById('recoveryCheckBtn').addEventListener('click',runRecoveryCheck);
 
 initSharedState();
 </script></body></html>
