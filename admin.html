@@ -27,7 +27,7 @@ header{height:82px;background:linear-gradient(120deg,var(--blue2),var(--blue));c
 </div>
 <div id="modalRoot"></div><div id="voiceRoot"></div><div id="toastRoot"></div>
 <script>
-function formatTurmaCode(value){const digits=String(value||'').replace(/\\D/g,'').slice(0,11);return digits.slice(0,3)+(digits.length>3?'.'+digits.slice(3,7):'')+(digits.length>7?'.'+digits.slice(7,11):'')}
+function formatTurmaCode(value){const digits=String(value||'').replace(/\D/g,'').slice(0,11);return digits.slice(0,3)+(digits.length>3?'.'+digits.slice(3,7):'')+(digits.length>7?'.'+digits.slice(7,11):'')}
 
 const BR_ZONE='America/Sao_Paulo';
 function brParts(now=new Date()){
