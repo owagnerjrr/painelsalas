@@ -41,7 +41,7 @@ function openRoomDetails(room){
  document.getElementById('roomDetailTitle').textContent='Solicitar '+roomName(room);
  const hours=Array.from({length:15},(_,i)=>String(i+8).padStart(2,'0')+':00');
  const options=hours.map(h=>'<option value="'+h+'">'+h+'</option>').join('');
- document.getElementById('roomDetailContent').innerHTML='<form id="teacherBookingForm"><p class="room-detail-meta">Solicitação de utilização · Horário de Brasília</p><label class="request-label">Colaborador / Responsável<input name="teacher" list="teacherOptions" required placeholder="Digite seu nome" autocomplete="name"></label><datalist id="teacherOptions"></datalist><div class="request-grid"><label class="request-label">Data inicial<input name="first" type="date" required min="'+isoToday()+'" value="'+isoToday()+'"></label><label class="request-label">Data final (opcional)<input name="last" type="date" min="'+isoToday()+'"></label></div><p class="room-detail-meta">O horário será repetido em todos os dias selecionados, incluindo sábados, domingos e feriados quando necessário.</p><div class="request-grid"><label class="request-label">Início<select name="start" required>'+options+'</select></label><label class="request-label">Até<select name="end" required>'+options+'</select></label></div><label class="request-label">Curso / Turma / Motivo<input name="course" required placeholder="Ex.: Técnico em Informática"></label><p id="requestFeedback" role="status" aria-live="polite"></p><div class="request-actions"><button type="button" class="request-cancel">Cancelar</button><button type="submit" class="request-save">Solicitar sala</button></div></form>';
+ document.getElementById('roomDetailContent').innerHTML='<form id="teacherBookingForm"><p class="room-detail-meta">Solicitação de utilização · Horário de Brasília</p><label class="request-label">Colaborador / Responsável<input name="teacher" list="teacherOptions" required placeholder="Digite seu nome" autocomplete="name"></label><datalist id="teacherOptions"></datalist><div class="request-grid"><label class="request-label">Data inicial<input name="first" type="date" required min="'+isoToday()+'" value="'+isoToday()+'"></label><label class="request-label">Data final (opcional)<input name="last" type="date" min="'+isoToday()+'"></label></div><p class="room-detail-meta">O horário será repetido em todos os dias selecionados, incluindo sábados, domingos e feriados quando necessário.</p><div class="request-grid"><label class="request-label">Início<select name="start" required>'+options+'</select></label><label class="request-label">Até<select name="end" required>'+options+'</select></label></div><label class="request-label">Curso / Turma / Motivo<input name="course" required placeholder="Ex.: Técnico em Informática"></label><label class="request-label">Código da turma (obrigatório)<input name="turmaCode" required inputmode="numeric" maxlength="11" pattern="039[0-9]{8}" placeholder="03920260001" title="039 + ano com 4 dígitos + código da turma com 4 dígitos"></label><p id="requestFeedback" role="status" aria-live="polite"></p><div class="request-actions"><button type="button" class="request-cancel">Cancelar</button><button type="submit" class="request-save">Solicitar sala</button></div></form>';
  const form=document.getElementById('teacherBookingForm');
  form.elements.start.value='08:00';form.elements.end.value='09:00';
  form.elements.first.addEventListener('change',()=>{form.elements.last.min=form.elements.first.value});
@@ -52,9 +52,10 @@ function openRoomDetails(room){
 }
 async function submitTeacherBooking(room,form){
  const feedback=document.getElementById('requestFeedback'),button=form.querySelector('.request-save');
- const teacher=form.elements.teacher.value.trim(),course=form.elements.course.value.trim(),first=form.elements.first.value,last=form.elements.last.value||first,start=form.elements.start.value,end=form.elements.end.value;
+ const teacher=form.elements.teacher.value.trim(),course=form.elements.course.value.trim(),turmaCode=form.elements.turmaCode.value.trim(),first=form.elements.first.value,last=form.elements.last.value||first,start=form.elements.start.value,end=form.elements.end.value;
  const fail=t=>{feedback.textContent=t;feedback.style.color='#b42318'};
  if(!teacher||!course||!first)return fail('Preencha todos os campos obrigatórios.');
+ if(!/^039\\d{8}$/.test(turmaCode))return fail('Código inválido: informe 039 + ano (4 dígitos) + turma (4 dígitos).');
  if(first<isoToday()||first===isoToday()&&start<=brParts().time)return fail('Escolha um horário futuro, considerando o horário de Brasília.');
  if(last<first)return fail('A data final não pode ser anterior à inicial.');
  if(start<'08:00'||end>'22:00'||start>=end)return fail('Selecione um período válido entre 08:00 e 22:00.');
@@ -66,10 +67,21 @@ async function submitTeacherBooking(room,form){
   const res=await fetch('/api/state',{cache:'no-store'});if(!res.ok)throw Error('Não foi possível consultar a agenda.');
   const state=await res.json(),current=state.data||{},existing=current[room]||[];
   if(state.maintenance?.[room])return fail('Sala bloqueada para manutenção. Procure a administração.');
-  const overlap=existing.find(b=>days.includes(b.date||isoToday())&&start<b.end&&end>b.start);
+  const duplicateLocations=[];
+  for(const [otherRoom,bookings] of Object.entries(current)){
+   const matches=(bookings||[]).filter(b=>b.turmaCode===turmaCode&&days.includes(b.date||isoToday())&&start<b.end&&end>b.start);
+   if(matches.length)duplicateLocations.push({otherRoom,matches});
+  }
+  if(duplicateLocations.length){
+   const firstMatch=duplicateLocations[0],previous=firstMatch.matches[0];
+   if(!confirm('Essa turma já está marcada na sala '+roomName(firstMatch.otherRoom)+', com professor '+(previous.teacher||'não informado')+'. Você quer trocar?'))return;
+  }
+  const removed=new Map(duplicateLocations.map(x=>[x.otherRoom,new Set(x.matches)]));
+  const overlap=existing.find(b=>!removed.get(room)?.has(b)&&days.includes(b.date||isoToday())&&start<b.end&&end>b.start);
   if(overlap)return fail('Conflito: a sala já está ocupada em '+(overlap.date||first).split('-').reverse().join('/')+' nesse horário.');
+  for(const [otherRoom,ids] of removed)current[otherRoom]=(current[otherRoom]||[]).filter(b=>!ids.has(b));
   const groupId=days.length>1?'docente-'+Date.now()+'-'+Math.random().toString(36).slice(2):null;
-  current[room]=existing.concat(days.map(date=>({...{teacher,course,start,end,date},...(groupId?{groupId,dateStart:first,dateEnd:last}:{})})));
+  current[room]=(current[room]||[]).concat(days.map(date=>({...{teacher,course,turmaCode,start,end,date},...(groupId?{groupId,dateStart:first,dateEnd:last}:{})})));
   const people=[...new Set([...(state.people||[]),teacher])];
   const save=await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:current,maintenance:state.maintenance||{},people,version:state.version??0})});
   if(!save.ok){const detail=await save.json().catch(()=>({}));throw Error(detail.error||'Não foi possível salvar. Tente novamente.')}
