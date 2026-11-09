@@ -196,7 +196,7 @@ function saveBooking(){
  const teacher=$('#mTeacher').value.trim(),start=$('#mStart').value,end=$('#mEnd').value,course=$('#mCourse').value.trim(),turmaCode=formatTurmaCode($('#mTurmaCode').value.trim()),first=$('#mDate').value,last=$('#mDateEnd').value||first;
  const realRoom=editing?editing.room:rooms.find(r=>roomName(r)===document.querySelector('.modal .sub').textContent);
  if(!teacher||!start||!end||!course||!first){alert('Preencha colaborador, data inicial, início, até e curso/turma.');return}
- if(!/^039\\.\\d{4}\\.\\d{4}$/.test(turmaCode)){alert('Informe o código da turma com formato 039.AAAA.0000. Exemplo: 039.2026.0001.');$('#mTurmaCode').focus();return}
+ if(!/^039\.\d{4}\.\d{4}$/.test(turmaCode)){alert('Informe o código da turma com formato 039.AAAA.0000. Exemplo: 039.2026.0001.');$('#mTurmaCode').focus();return}
  const original=editing?data[editing.room]?.[editing.index]:null;
  const keepingActive=original&&original.date===first&&first===isoToday()&&start===original.start&&original.end>brParts().time;
  if(pastStart(first,start)&&!keepingActive){alert('Escolha uma data e um horário que ainda não passaram em Brasília.');refreshTimeOptions();return}
