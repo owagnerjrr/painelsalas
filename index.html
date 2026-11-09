@@ -50,7 +50,7 @@ function openRoomDetails(room){
  form.elements.first.value=viewAgendaDay;form.elements.last.min=viewAgendaDay;form.elements.start.value='08:00';form.elements.end.value='09:00';
  form.elements.first.addEventListener('change',()=>{form.elements.last.min=form.elements.first.value});
  form.querySelector('.request-cancel').addEventListener('click',()=>dialog.close());
- fetch('/api/state',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(s=>{if(!s)return;document.getElementById('teacherOptions').innerHTML=(s.people||[]).map(p=>'<option value="'+esc(p)+'"></option>').join('')}).catch(()=>{});
+ const showTeacherOptions=(names)=>{document.getElementById('teacherOptions').innerHTML=[...new Set([...defaultPeople,...(names||[])])].sort((a,b)=>a.localeCompare(b,'pt-BR')).map(p=>'<option value="'+esc(p)+'"></option>').join('')};showTeacherOptions([]);fetch('/api/state',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(s=>{if(s)showTeacherOptions(s.people)}).catch(()=>{});
  form.addEventListener('submit',e=>{e.preventDefault();submitTeacherBooking(room,form)});
  dialog.showModal();
 }
