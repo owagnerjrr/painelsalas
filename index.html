@@ -5,7 +5,23 @@
 .room{cursor:pointer}.room:focus-visible{outline:3px solid #1674bf;outline-offset:2px}.room-detail-dialog{border:0;border-radius:18px;padding:0;width:min(580px,92vw);max-height:85vh;box-shadow:0 22px 70px #001b3555;color:#17324d}.room-detail-dialog::backdrop{background:#061b32aa}.room-detail-body{padding:25px}.room-detail-head{display:flex;justify-content:space-between;align-items:center;gap:12px}.room-detail-head h2{margin:0;font-size:26px}.room-detail-close{border:0;border-radius:8px;background:#e8eef5;color:#17324d;font-size:24px;cursor:pointer;padding:5px 13px}.room-detail-entry{padding:13px 0;border-bottom:1px solid #dbe4ee;line-height:1.65}.room-detail-entry:last-child{border:0}.room-detail-meta{font-size:13px;color:#60758c;margin:10px 0}
 .request-label{display:flex;flex-direction:column;gap:6px;font-weight:650;font-size:14px;margin:14px 0}.request-label input,.request-label select{border:1px solid #cad7e4;border-radius:9px;padding:12px;font:inherit;width:100%;background:white;color:#17324d}.request-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.request-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}.request-actions button{padding:12px 16px;border:0;border-radius:9px;cursor:pointer;font-weight:700}.request-cancel{background:#e8eef5;color:#123f73}.request-save{background:#123f73;color:white}.request-save:disabled{opacity:.65}#requestFeedback{font-size:13px}@media(max-width:500px){.request-grid{grid-template-columns:1fr}}
 .datebar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:15px;padding:12px;background:white;color:#123f73;font-weight:700}.datebar input{padding:9px;border:2px solid #9ebcdb;border-radius:8px;font:inherit}.datebar button{padding:10px 18px;background:#123f73;color:white;border:0;border-radius:8px;cursor:pointer}.datebar strong{font-size:13px;color:#54708a}
-</style></head><body><header><div><h1>Painel de Salas</h1><p>Senac Três Corações</p></div><div class="legend"><div>🟢 Livre &nbsp;&nbsp; 🔴 Em uso &nbsp;&nbsp; 🟡 Próxima utilização &nbsp;&nbsp; ⚫ Manutenção</div><button class="guide-launch" type="button" onclick="document.getElementById('panelVideoGuide').showModal()">▶ Não sabe usar o painel? Veja o vídeo</button></div><div class="clock"><b id="clock"></b><span id="date"></span><small style="display:block;margin-top:7px">● Atualização automática</small></div></header><div class="datebar"><label>📅 Consultar data: <input id="viewAgendaDate" type="date"></label><button id="viewToday" type="button">Hoje</button><strong id="viewDateLabel"></strong></div><main class="grid" id="cards"></main><dialog class="guide-dialog" id="panelVideoGuide" aria-label="Vídeo explicativo do Painel de Salas" onclick="if(event.target===this)this.close()"><div class="guide-dialog-header"><h2>Como utilizar o Painel de Salas</h2><button type="button" aria-label="Fechar vídeo" onclick="document.getElementById('panelVideoGuide').close()">×</button></div><video controls playsinline preload="metadata" src="https://senacintratc.vercel.app/images/Video%20Painel%20de%20Salas%20Explicativo%20(1).mp4"></video></dialog><div id="voiceRoot"></div><div class="detail" id="detail"></div><dialog id="roomDetailDialog" class="room-detail-dialog" aria-labelledby="roomDetailTitle"><div class="room-detail-body"><div class="room-detail-head"><h2 id="roomDetailTitle"></h2><button type="button" class="room-detail-close" aria-label="Fechar detalhes">×</button></div><div id="roomDetailContent"></div></div></dialog><script>
+</style><style>
+.turma-search-open{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#123f73;border:1px solid #a9c4df;border-radius:10px;padding:10px 14px;font:700 14px Segoe UI,Arial,sans-serif;cursor:pointer}
+.turma-search-open:hover{background:#e8f2ff}
+.turma-search-dialog{border:0;border-radius:16px;padding:0;width:min(690px,calc(100vw - 28px));max-height:88vh;box-shadow:0 22px 70px #0006;color:#173451;background:#fff}
+.turma-search-dialog::backdrop{background:#071c32aa}
+.turma-search-inner{padding:22px}
+.turma-search-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.turma-search-head h2{margin:0;font-size:22px}
+.turma-search-close{border:0;background:#edf3f9;border-radius:9px;padding:7px 12px;font-size:22px;cursor:pointer;color:#123f73}
+.turma-search-input{width:100%;padding:13px 15px;margin:16px 0 8px;border:1px solid #b7c9dc;border-radius:10px;font:600 17px Segoe UI,Arial,sans-serif;color:#123f73}
+.turma-search-help{font-size:13px;color:#617286;margin:0 0 12px}
+.turma-search-results{overflow-y:auto;max-height:55vh;display:grid;gap:10px}
+.turma-search-result{border:1px solid #d9e4ef;border-radius:11px;padding:13px;background:#f8fbff;line-height:1.55;font-size:14px}
+.turma-search-result strong{font-size:16px;color:#123f73}
+.turma-search-result button{margin-top:9px;border:0;border-radius:8px;background:#123f73;color:#fff;padding:9px 12px;font-weight:700;cursor:pointer}
+.turma-search-empty{padding:22px;text-align:center;color:#66778b}
+</style></head><body><header><div><h1>Painel de Salas</h1><p>Senac Três Corações</p></div><div class="legend"><div>🟢 Livre &nbsp;&nbsp; 🔴 Em uso &nbsp;&nbsp; 🟡 Próxima utilização &nbsp;&nbsp; ⚫ Manutenção</div><button class="guide-launch" type="button" onclick="document.getElementById('panelVideoGuide').showModal()">▶ Não sabe usar o painel? Veja o vídeo</button></div><div class="clock"><b id="clock"></b><span id="date"></span><small style="display:block;margin-top:7px">● Atualização automática</small></div></header><div class="datebar"><button type="button" id="turmaSearchOpen" class="turma-search-open">🔎 Buscar turma</button><label>📅 Consultar data: <input id="viewAgendaDate" type="date"></label><button id="viewToday" type="button">Hoje</button><strong id="viewDateLabel"></strong></div><main class="grid" id="cards"></main><dialog class="guide-dialog" id="panelVideoGuide" aria-label="Vídeo explicativo do Painel de Salas" onclick="if(event.target===this)this.close()"><div class="guide-dialog-header"><h2>Como utilizar o Painel de Salas</h2><button type="button" aria-label="Fechar vídeo" onclick="document.getElementById('panelVideoGuide').close()">×</button></div><video controls playsinline preload="metadata" src="https://senacintratc.vercel.app/images/Video%20Painel%20de%20Salas%20Explicativo%20(1).mp4"></video></dialog><div id="voiceRoot"></div><div class="detail" id="detail"></div><dialog id="roomDetailDialog" class="room-detail-dialog" aria-labelledby="roomDetailTitle"><div class="room-detail-body"><div class="room-detail-head"><h2 id="roomDetailTitle"></h2><button type="button" class="room-detail-close" aria-label="Fechar detalhes">×</button></div><div id="roomDetailContent"></div></div></dialog><script>
 function formatTurmaCode(value){const digits=String(value||'').replace(/\D/g,'').slice(0,11);return digits.slice(0,3)+(digits.length>3?'.'+digits.slice(3,7):'')+(digits.length>7?'.'+digits.slice(7,11):'')}
 
 const BR_ZONE='America/Sao_Paulo';
@@ -100,4 +116,43 @@ async function syncState(){
   if((s.version??0)!==stateVersion){stateVersion=s.version??0;data=s.data||{};maintenance=s.maintenance||{};renderAgenda()}
  }catch(e){console.warn('Falha ao sincronizar painel:',e)}
 }
-syncState();setInterval(syncState,2000);</script><script>const panelGuide=document.getElementById('panelVideoGuide');panelGuide.addEventListener('close',()=>{const v=panelGuide.querySelector('video');v.pause();v.currentTime=0});</script></body></html>
+syncState();setInterval(syncState,2000);</script><script>const panelGuide=document.getElementById('panelVideoGuide');panelGuide.addEventListener('close',()=>{const v=panelGuide.querySelector('video');v.pause();v.currentTime=0});</script><dialog id="turmaSearchDialog" class="turma-search-dialog" aria-labelledby="turmaSearchTitle"><div class="turma-search-inner"><div class="turma-search-head"><h2 id="turmaSearchTitle">🔎 Localizar turma</h2><button type="button" class="turma-search-close" id="turmaSearchClose" aria-label="Fechar pesquisa">×</button></div><input id="turmaSearchInput" class="turma-search-input" type="search" inputmode="numeric" placeholder="Código da turma: 039.2026.0155" aria-label="Pesquisar código da turma"><p class="turma-search-help">Pesquise pelo código completo ou por parte dele. A busca considera todas as datas cadastradas.</p><div id="turmaSearchResults" class="turma-search-results" aria-live="polite"></div></div></dialog><script>
+// Pesquisa somente leitura: consulta a agenda carregada do Firebase e não altera reservas.
+(function(){
+ const dialog=document.getElementById('turmaSearchDialog'),input=document.getElementById('turmaSearchInput'),results=document.getElementById('turmaSearchResults');
+ const fmt=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v.split('-').reverse().join('/'):v||'Não informada';
+ const safe=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const normalize=v=>String(v||'').replace(/\D/g,'');
+ function search(){
+  const q=normalize(input.value);
+  if(q.length<3){results.innerHTML='<div class="turma-search-empty">Digite ao menos 3 números do código para localizar a turma.</div>';return}
+  const groups=new Map();
+  for(const [room,bookings] of Object.entries(data||{})){
+   if(!Array.isArray(bookings))continue;
+   for(const b of bookings){
+    if(!normalize(b.turmaCode).includes(q))continue;
+    const date=b.date||b.dateStart||'';
+    const key=[room,b.turmaCode||'',b.teacher||'',b.course||'',b.start||'',b.end||'',b.groupId||date].join('|');
+    if(!groups.has(key))groups.set(key,{room,code:b.turmaCode||'',teacher:b.teacher||'',course:b.course||'',start:b.start||'',end:b.end||'',first:b.dateStart||date,last:b.dateEnd||date,dates:[]});
+    const g=groups.get(key);if(date)g.dates.push(date);
+   }
+  }
+  const list=[...groups.values()].map(g=>({...g,first:g.dates.length?g.dates.reduce((a,b)=>a<b?a:b,g.first||g.dates[0]):g.first,last:g.dates.length?g.dates.reduce((a,b)=>a>b?a:b,g.last||g.dates[0]):g.last})).sort((a,b)=>a.first.localeCompare(b.first)||a.room.localeCompare(b.room));
+  if(!list.length){results.innerHTML='<div class="turma-search-empty">Nenhuma turma encontrada com esse código.</div>';return}
+  results.innerHTML='<p class="turma-search-help">'+list.length+' resultado(s) encontrado(s).</p>'+list.slice(0,100).map((g,i)=>'<div class="turma-search-result"><strong>'+safe(g.code||'Código não informado')+' — '+safe(/^\d+$/.test(g.room)?'Sala '+g.room:g.room)+'</strong><div>👤 Docente: '+safe(g.teacher||'Não informado')+'</div><div>🎓 Curso: '+safe(g.course||'Não informado')+'</div><div>🕐 Horário: '+safe(g.start)+' às '+safe(g.end)+'</div><div>📅 Período: '+safe(fmt(g.first))+(g.last!==g.first?' até '+safe(fmt(g.last)):'')+'</div><button type="button" data-turma-result="'+i+'">Ver sala na agenda</button></div>').join('')+(list.length>100?'<p class="turma-search-help">Exibindo os primeiros 100 resultados. Digite mais números para refinar.</p>':'');
+  results.querySelectorAll('[data-turma-result]').forEach(btn=>btn.onclick=()=>{
+   const g=list[Number(btn.dataset.turmaResult)],date=g.first;
+   const dateInput=document.getElementById('agendaDate')||document.getElementById('viewAgendaDate');
+   if(dateInput&&date){dateInput.value=date;dateInput.dispatchEvent(new Event('change',{bubbles:true}))}
+   dialog.close();
+   const roomCards=document.querySelectorAll('[data-room]');
+   const card=[...roomCards].find(el=>el.dataset.room===g.room);
+   if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='4px solid #e3a52a';card.style.outlineOffset='2px';setTimeout(()=>{card.style.outline='';card.style.outlineOffset=''},4500)}
+  });
+ }
+ document.getElementById('turmaSearchOpen').addEventListener('click',()=>{dialog.showModal();input.value='';search();input.focus()});
+ document.getElementById('turmaSearchClose').addEventListener('click',()=>dialog.close());
+ dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+ input.addEventListener('input',search);
+})();
+</script></body></html>
