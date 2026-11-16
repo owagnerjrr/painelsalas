@@ -25,10 +25,26 @@ for (const key of ['senacRoomsV4','senacMaintenance','senacPeople']) {
  catch (e) { window.__senacRecoverySnapshot[key] = null; }
 }
 </script>
-</head>
+<style>
+.turma-search-open{display:inline-flex;align-items:center;gap:7px;background:#fff;color:#123f73;border:1px solid #a9c4df;border-radius:10px;padding:10px 14px;font:700 14px Segoe UI,Arial,sans-serif;cursor:pointer}
+.turma-search-open:hover{background:#e8f2ff}
+.turma-search-dialog{border:0;border-radius:16px;padding:0;width:min(690px,calc(100vw - 28px));max-height:88vh;box-shadow:0 22px 70px #0006;color:#173451;background:#fff}
+.turma-search-dialog::backdrop{background:#071c32aa}
+.turma-search-inner{padding:22px}
+.turma-search-head{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.turma-search-head h2{margin:0;font-size:22px}
+.turma-search-close{border:0;background:#edf3f9;border-radius:9px;padding:7px 12px;font-size:22px;cursor:pointer;color:#123f73}
+.turma-search-input{width:100%;padding:13px 15px;margin:16px 0 8px;border:1px solid #b7c9dc;border-radius:10px;font:600 17px Segoe UI,Arial,sans-serif;color:#123f73}
+.turma-search-help{font-size:13px;color:#617286;margin:0 0 12px}
+.turma-search-results{overflow-y:auto;max-height:55vh;display:grid;gap:10px}
+.turma-search-result{border:1px solid #d9e4ef;border-radius:11px;padding:13px;background:#f8fbff;line-height:1.55;font-size:14px}
+.turma-search-result strong{font-size:16px;color:#123f73}
+.turma-search-result button{margin-top:9px;border:0;border-radius:8px;background:#123f73;color:#fff;padding:9px 12px;font-weight:700;cursor:pointer}
+.turma-search-empty{padding:22px;text-align:center;color:#66778b}
+</style></head>
 <body>
 <header><div><h1>Administração das Salas</h1><p>Senac Três Corações</p></div><div class="clock"><strong id="clock"></strong><span id="date"></span></div></header>
-<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button type="button" class="btn light" id="recoveryCheckBtn" style="background:#e8f2ff;border:1px solid #9dbfe8">🔎 Verificar agendamentos antigos</button><button type="button" class="btn light" id="clearAllBookings" style="background:#fff0f0;color:#9c1b1b;border:1px solid #e9b6b6">Excluir todos os agendamentos</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
+<div class="toolbar"><div><h2>Agenda de salas</h2><p>Arraste um colaborador para uma sala e informe o período e o curso.</p></div><div class="toolbar-actions"><button type="button" id="turmaSearchOpen" class="turma-search-open">🔎 Buscar turma</button><label style="display:flex;align-items:center;gap:8px;font-weight:800">Data <input id="agendaDate" type="date" style="height:42px;border:1px solid #cbd5e1;border-radius:10px;padding:0 10px;font:inherit"></label><button class="btn voice-admin-btn" type="button" data-voice-book>🎙️ Agendar por voz</button><button type="button" class="btn light" id="recoveryCheckBtn" style="background:#e8f2ff;border:1px solid #9dbfe8">🔎 Verificar agendamentos antigos</button><button type="button" class="btn light" id="clearAllBookings" style="background:#fff0f0;color:#9c1b1b;border:1px solid #e9b6b6">Excluir todos os agendamentos</button><button class="btn light" id="clearSelection">Limpar seleção</button><button class="btn primary" id="addPerson">+ Colaborador</button></div></div>
 <div class="workspace">
 <aside class="people"><h3>Colaboradores</h3><p>Pesquise pelo primeiro nome e arraste para a sala.</p><input class="search" id="search" placeholder="Buscar colaborador..." autocomplete="off"><div class="person-list" id="people"></div><div class="hint">Segure pelo nome e arraste até a sala desejada. Você também pode clicar no nome e depois clicar na sala.</div></aside>
 <main class="agenda-wrap"><div class="agenda-head"><div><h3>Salas de aula — Hoje</h3><p id="today"></p></div><div class="legend">🔴 Em uso &nbsp; 🟡 Próxima &nbsp; 🟢 Livre</div></div><div class="agenda" id="agenda"></div></main>
@@ -327,4 +343,43 @@ async function clearAllBookingsSafely(){
 document.getElementById('clearAllBookings').addEventListener('click',clearAllBookingsSafely);
 
 initSharedState();
+</script><dialog id="turmaSearchDialog" class="turma-search-dialog" aria-labelledby="turmaSearchTitle"><div class="turma-search-inner"><div class="turma-search-head"><h2 id="turmaSearchTitle">🔎 Localizar turma</h2><button type="button" class="turma-search-close" id="turmaSearchClose" aria-label="Fechar pesquisa">×</button></div><input id="turmaSearchInput" class="turma-search-input" type="search" inputmode="numeric" placeholder="Código da turma: 039.2026.0155" aria-label="Pesquisar código da turma"><p class="turma-search-help">Pesquise pelo código completo ou por parte dele. A busca considera todas as datas cadastradas.</p><div id="turmaSearchResults" class="turma-search-results" aria-live="polite"></div></div></dialog><script>
+// Pesquisa somente leitura: consulta a agenda carregada do Firebase e não altera reservas.
+(function(){
+ const dialog=document.getElementById('turmaSearchDialog'),input=document.getElementById('turmaSearchInput'),results=document.getElementById('turmaSearchResults');
+ const fmt=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?v.split('-').reverse().join('/'):v||'Não informada';
+ const safe=v=>String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+ const normalize=v=>String(v||'').replace(/\D/g,'');
+ function search(){
+  const q=normalize(input.value);
+  if(q.length<3){results.innerHTML='<div class="turma-search-empty">Digite ao menos 3 números do código para localizar a turma.</div>';return}
+  const groups=new Map();
+  for(const [room,bookings] of Object.entries(data||{})){
+   if(!Array.isArray(bookings))continue;
+   for(const b of bookings){
+    if(!normalize(b.turmaCode).includes(q))continue;
+    const date=b.date||b.dateStart||'';
+    const key=[room,b.turmaCode||'',b.teacher||'',b.course||'',b.start||'',b.end||'',b.groupId||date].join('|');
+    if(!groups.has(key))groups.set(key,{room,code:b.turmaCode||'',teacher:b.teacher||'',course:b.course||'',start:b.start||'',end:b.end||'',first:b.dateStart||date,last:b.dateEnd||date,dates:[]});
+    const g=groups.get(key);if(date)g.dates.push(date);
+   }
+  }
+  const list=[...groups.values()].map(g=>({...g,first:g.dates.length?g.dates.reduce((a,b)=>a<b?a:b,g.first||g.dates[0]):g.first,last:g.dates.length?g.dates.reduce((a,b)=>a>b?a:b,g.last||g.dates[0]):g.last})).sort((a,b)=>a.first.localeCompare(b.first)||a.room.localeCompare(b.room));
+  if(!list.length){results.innerHTML='<div class="turma-search-empty">Nenhuma turma encontrada com esse código.</div>';return}
+  results.innerHTML='<p class="turma-search-help">'+list.length+' resultado(s) encontrado(s).</p>'+list.slice(0,100).map((g,i)=>'<div class="turma-search-result"><strong>'+safe(g.code||'Código não informado')+' — '+safe(/^\d+$/.test(g.room)?'Sala '+g.room:g.room)+'</strong><div>👤 Docente: '+safe(g.teacher||'Não informado')+'</div><div>🎓 Curso: '+safe(g.course||'Não informado')+'</div><div>🕐 Horário: '+safe(g.start)+' às '+safe(g.end)+'</div><div>📅 Período: '+safe(fmt(g.first))+(g.last!==g.first?' até '+safe(fmt(g.last)):'')+'</div><button type="button" data-turma-result="'+i+'">Ver sala na agenda</button></div>').join('')+(list.length>100?'<p class="turma-search-help">Exibindo os primeiros 100 resultados. Digite mais números para refinar.</p>':'');
+  results.querySelectorAll('[data-turma-result]').forEach(btn=>btn.onclick=()=>{
+   const g=list[Number(btn.dataset.turmaResult)],date=g.first;
+   const dateInput=document.getElementById('agendaDate')||document.getElementById('viewAgendaDate');
+   if(dateInput&&date){dateInput.value=date;dateInput.dispatchEvent(new Event('change',{bubbles:true}))}
+   dialog.close();
+   const roomCards=document.querySelectorAll('[data-room]');
+   const card=[...roomCards].find(el=>el.dataset.room===g.room);
+   if(card){card.scrollIntoView({behavior:'smooth',block:'center'});card.style.outline='4px solid #e3a52a';card.style.outlineOffset='2px';setTimeout(()=>{card.style.outline='';card.style.outlineOffset=''},4500)}
+  });
+ }
+ document.getElementById('turmaSearchOpen').addEventListener('click',()=>{dialog.showModal();input.value='';search();input.focus()});
+ document.getElementById('turmaSearchClose').addEventListener('click',()=>dialog.close());
+ dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
+ input.addEventListener('input',search);
+})();
 </script></body></html>
